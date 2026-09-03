@@ -554,6 +554,68 @@ defimpl Wyvern.IR, for: Wyvern.Instruction.Call do
   end
 end
 
+defimpl Wyvern.IR, for: Wyvern.Instruction.CallASM do
+  alias Wyvern.IR
+  alias Wyvern.Type
+  alias Wyvern.Instruction
+
+  @doc """
+  """
+  def to_ir(
+        %Instruction.CallASM{
+          id: id,
+          fn_type: fn_type,
+          asm: asm,
+          constraints: constraints,
+          args: args
+        } = ins,
+        %IR.Context{} = ctx
+      ) do
+    # %ret = call i64 asm sideeffect "svc 0", "={x0},{x8},{x0},{x1},{x2},~{memory},~{cc}"(i64 #{@sys_write}, i64 %fd, i8* %buf, i64 %len)
+    dest_str = resolve_dest(id, fn_type, ctx)
+    {ret_type_str, ctx} = IR.to_ir(fn_type.ret_type, ctx)
+
+    flags_str =
+      [
+        ins.sideeffect && "sideeffect",
+        ins.alignstack && "alignstack",
+        ins.dialect == :intel && "inteldialect",
+        ins.unwind && "unwind"
+      ]
+      |> Enum.filter(& &1)
+      |> Enum.map_join("", &(&1 <> " "))
+
+    {args_ir, ctx} = Enum.map_reduce(args, ctx, &IR.to_ir/2)
+    args_str = Enum.join(args_ir, ", ")
+
+    if dest_str == nil do
+      {~s[call void asm #{flags_str}"#{asm}", "#{constraints}"(#{args_str})], ctx}
+    else
+      {~s[%#{dest_str} = call #{ret_type_str} asm #{flags_str}"#{asm}", "#{constraints}"(#{args_str})],
+       ctx}
+    end
+  end
+
+  defp resolve_dest(id, fn_type, ctx) do
+    if Type.void?(fn_type.ret_type) do
+      nil
+    else
+      IR.Context.lookup_id(ctx, id)
+    end
+  end
+
+  def resolve_names(
+        %Instruction.CallASM{id: id, dest: dest, fn_type: fn_type},
+        %IR.Context{} = ctx
+      ) do
+    if Type.void?(fn_type.ret_type) do
+      ctx
+    else
+      IR.Context.map_id_to_name(ctx, id, dest)
+    end
+  end
+end
+
 defimpl Wyvern.IR, for: Wyvern.Instruction.ExtractValue do
   alias Wyvern.IR
   alias Wyvern.Instruction

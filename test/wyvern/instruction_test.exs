@@ -290,6 +290,101 @@ defmodule Wyvern.InstructionTest do
     end
   end
 
+  describe "CallASM" do
+    setup do
+      [ctx: IR.Context.new()]
+    end
+
+    test "Non-void asm call — os_write syscall shape", %{ctx: ctx} do
+      code =
+        gen_code(
+          Instruction.call_asm(
+            "ret",
+            Type.function(Type.i64(), [Type.i64(), Type.i64(), Type.ptr(), Type.i64()]),
+            "svc 0",
+            "={x0},{x8},{x0},{x1},{x2},~{memory},~{cc}",
+            [
+              Value.i64(64),
+              Value.local_ref(Type.i64(), "fd"),
+              Value.local_ref(Type.ptr(), "buf"),
+              Value.local_ref(Type.i64(), "len")
+            ],
+            sideeffect: true
+          ),
+          ctx
+        )
+
+      assert code ==
+               ~s[%ret = call i64 asm sideeffect "svc 0", "={x0},{x8},{x0},{x1},{x2},~{memory},~{cc}"(i64 64, i64 %fd, ptr %buf, i64 %len)]
+    end
+
+    test "Void asm call — no destination at all", %{ctx: ctx} do
+      code =
+        gen_code(
+          Instruction.call_asm(
+            nil,
+            Type.function(Type.void(), [Type.i64()]),
+            "svc 0",
+            "{x0}",
+            [Value.i64(0)],
+            sideeffect: true
+          ),
+          ctx
+        )
+
+      assert code == ~s[call void asm sideeffect "svc 0", "{x0}"(i64 0)]
+    end
+
+    test "Result flows into a following instruction, like os_mem_reserve_commit's inttoptr", %{
+      ctx: ctx
+    } do
+      asm_ins =
+        Instruction.call_asm(
+          nil,
+          Type.function(Type.i64(), [Type.i64()]),
+          "svc 0",
+          "={x0},{x0},~{memory},~{cc}",
+          [Value.i64(9)],
+          sideeffect: true
+        )
+
+      ptr_ins = Instruction.int_to_ptr("ptr", Value.handle(asm_ins))
+
+      ctx_1 = IR.resolve_names(asm_ins, ctx)
+      ctx_2 = IR.resolve_names(ptr_ins, ctx_1)
+
+      {code, _} = IR.to_ir(ptr_ins, ctx_2)
+
+      assert code == "%ptr = inttoptr i64 %0 to ptr"
+    end
+
+    test "Raises on an unknown option" do
+      assert_raise RuntimeError, fn ->
+        Instruction.call_asm(
+          nil,
+          Type.function(Type.i64(), []),
+          "svc 0",
+          "={x0}",
+          [],
+          garbage: true
+        )
+      end
+    end
+
+    test "Raises on wrong arg count" do
+      assert_raise RuntimeError, fn ->
+        Instruction.call_asm(
+          nil,
+          Type.function(Type.i64(), [Type.i64()]),
+          "svc 0",
+          "={x0},{x0}",
+          [],
+          sideeffect: true
+        )
+      end
+    end
+  end
+
   describe "Fadd" do
     setup do
       [ctx: IR.Context.new()]

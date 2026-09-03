@@ -55,6 +55,18 @@ defimpl Wyvern.ToHandle, for: Wyvern.Instruction.Call do
   end
 end
 
+defimpl Wyvern.ToHandle, for: Wyvern.Instruction.CallASM do
+  alias Wyvern.Value.Handle
+
+  def to_handle(%Wyvern.Instruction.CallASM{fn_type: %{ret_type: %Wyvern.Type.Void{}}}) do
+    raise "ToHandle not supported in void call!"
+  end
+
+  def to_handle(%Wyvern.Instruction.CallASM{id: id, fn_type: %{ret_type: ret_type}}) do
+    Handle.new(id, ret_type)
+  end
+end
+
 defimpl Wyvern.ToHandle, for: Wyvern.Instruction.ExtractValue do
   alias Wyvern.Value.Handle
   alias Wyvern.Instruction

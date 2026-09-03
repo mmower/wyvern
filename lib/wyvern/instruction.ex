@@ -191,7 +191,7 @@ defmodule Wyvern.Instruction do
       }
     end
 
-    defp validate_args!(fn_type, args) do
+    def validate_args!(fn_type, args) do
       if !fn_type.var_args && length(fn_type.params) != length(args),
         do: raise("Attempt to call function with wrong number of arguments!")
 
@@ -208,6 +208,90 @@ defmodule Wyvern.Instruction do
   end
 
   def call(dest, fn_type, fn_ref, args), do: Call.new(dest, fn_type, fn_ref, args)
+
+  defmodule CallASM do
+    @moduledoc """
+    The CallASM module is a variant of Call that is used for inserting inline
+    assembly language. This is useful for interacting with OS level, for example
+    writing platform-based shims.
+    """
+    @valid_opts [
+      :sideeffect,
+      :alignstack,
+      :unwind,
+      :dialect
+    ]
+
+    @type t :: %__MODULE__{
+            id: reference(),
+            dest: Types.destination(),
+            fn_type: Type.Function.t(),
+            asm: String.t(),
+            constraints: String.t(),
+            args: [Value.t()],
+            sideeffect: boolean(),
+            alignstack: boolean(),
+            unwind: boolean(),
+            dialect: atom()
+          }
+    defstruct [
+      :id,
+      :dest,
+      :fn_type,
+      :asm,
+      :constraints,
+      :args,
+      :sideeffect,
+      :alignstack,
+      :unwind,
+      :dialect
+    ]
+
+    @spec new(
+            Types.destination(),
+            Type.Function.t(),
+            String.t(),
+            String.t(),
+            [Value.t()],
+            keyword()
+          ) :: __MODULE__.t()
+    def new(dest, fn_type, asm, constraints, args, opts) do
+      validate_opts!(opts)
+      sideeffect = Keyword.get(opts, :sideeffect, false)
+      alignstack = Keyword.get(opts, :alignstack, false)
+      dialect = Keyword.get(opts, :dialect, :att)
+      validate_dialect!(dialect)
+      unwind = Keyword.get(opts, :unwind, false)
+
+      Call.validate_args!(fn_type, args)
+
+      %__MODULE__{
+        id: make_ref(),
+        dest: dest,
+        fn_type: fn_type,
+        asm: asm,
+        constraints: constraints,
+        args: args,
+        sideeffect: sideeffect,
+        alignstack: alignstack,
+        dialect: dialect,
+        unwind: unwind
+      }
+    end
+
+    defp validate_opts!(opts) do
+      opt_names = Keyword.keys(opts)
+      unknown_opts = Enum.filter(opt_names, fn opt -> opt not in @valid_opts end)
+      if !Enum.empty?(unknown_opts), do: raise("Invalid options: #{inspect(unknown_opts)}!")
+    end
+
+    defp validate_dialect!(:att), do: nil
+    defp validate_dialect!(:intel), do: nil
+    defp validate_dialect!(dialect), do: raise("invalid dialect #{dialect} option!")
+  end
+
+  def call_asm(dest, fn_type, asm, constraints, args, opts),
+    do: CallASM.new(dest, fn_type, asm, constraints, args, opts)
 
   defmodule Fadd do
     @type t :: %__MODULE__{
