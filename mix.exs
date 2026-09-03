@@ -5,7 +5,7 @@ defmodule Wyvern.MixProject do
     [
       app: :wyvern,
       description: "Wyvern is an Elixir builder API for constructing LLVM IR",
-      version: "1.0.2",
+      version: "1.0.3",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -22,7 +22,9 @@ defmodule Wyvern.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
-    []
+    [
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
   end
 
   defp package do
