@@ -4,10 +4,12 @@ defmodule Wyvern.MixProject do
   def project do
     [
       app: :wyvern,
-      version: "1.0.1",
+      description: "Wyvern is an Elixir builder API for constructing LLVM IR",
+      version: "1.0.2",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package()
     ]
   end
 
@@ -21,5 +23,17 @@ defmodule Wyvern.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     []
+  end
+
+  defp package do
+    [
+      files: Path.wildcard("lib/**/*.ex") ++ ~w(mix.exs README.md LICENSE.txt),
+      # Must be valid SPDX license identifiers
+      licenses: ["Apache-2.0"],
+      links: %{
+        "GitHub" => "https://github.com",
+        "Docs" => "https://hexdocs.pm"
+      }
+    ]
   end
 end
