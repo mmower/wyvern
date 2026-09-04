@@ -107,8 +107,8 @@ be found at <https://hexdocs.pm/wyvern>.
 
 ## AI Disclosure
 
-The author used Claude Code as a research partner to explore and understand the LLVM spec.
+The author used Claude Code as a research partner to explore and understand the LLVM spec and for routine coding tasks.
 
-All code was written by the author, barring a few repetitive tests and some repetitive functions (I got bored implementing the same logic for all of the numeric instructions).
+All code was written first by the author. Claude Code was used for refactorings (e.g. converting repetitive binary operations to use a shared helper function) and to build repetitive code sections once the pattern was established.
 
-Claude was used to ask questions and to review my implementation and whether it & its tests properly covered the areas of the spec being implemented.
+Claude Code was also used as the arbiter of the LLVM specification and to review the code against to ensure it was generating valid LLVM IR.
