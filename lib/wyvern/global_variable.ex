@@ -157,3 +157,63 @@ defmodule Wyvern.GlobalVariable do
   defp validate_addr!(addr) when addr in @addr, do: nil
   defp validate_addr!(addr), do: raise("Unknown address mode: #{addr}!")
 end
+
+defimpl Wyvern.IR, for: Wyvern.GlobalVariable do
+  alias Wyvern.IR
+  alias Wyvern.Identifier
+  alias Wyvern.GlobalVariable
+
+  def to_ir(
+        %GlobalVariable{
+          name: name,
+          type: type,
+          initializer: nil,
+          mutable: mutable,
+          linkage: linkage,
+          visibility: visibility,
+          addr: addr
+        },
+        %IR.Context{} = ctx
+      ) do
+    name = Identifier.legal_identifier(name)
+    keyword = if mutable, do: "global", else: "constant"
+    {type_str, ctx} = IR.to_ir(type, ctx)
+
+    {"@#{name} = #{linkage_keyword(linkage, "external")}#{visibility_keyword(visibility)}#{addr_keyword(addr)}#{keyword} #{type_str}",
+     ctx}
+  end
+
+  def to_ir(
+        %GlobalVariable{
+          name: name,
+          initializer: initializer,
+          mutable: mutable,
+          linkage: linkage,
+          visibility: visibility,
+          addr: addr
+        },
+        %IR.Context{} = ctx
+      ) do
+    ins_name = if mutable, do: "global", else: "constant"
+    name = Identifier.legal_identifier(name)
+    {value_str, ctx} = IR.to_ir(initializer, ctx)
+
+    {"@#{name} = #{linkage_keyword(linkage, nil)}#{visibility_keyword(visibility)}#{addr_keyword(addr)}#{ins_name} #{value_str}",
+     ctx}
+  end
+
+  defp linkage_keyword(nil, nil), do: ""
+  defp linkage_keyword(nil, default), do: "#{default} "
+  defp linkage_keyword(linkage, _default), do: "#{linkage} "
+
+  defp visibility_keyword(nil), do: ""
+  defp visibility_keyword(visibility), do: "#{visibility} "
+
+  defp addr_keyword(nil), do: ""
+  defp addr_keyword(address), do: "#{address} "
+
+  def resolve_names(%GlobalVariable{initializer: nil}, %IR.Context{} = ctx), do: ctx
+
+  def resolve_names(%GlobalVariable{initializer: initializer}, %IR.Context{} = ctx),
+    do: IR.resolve_names(initializer, ctx)
+end

@@ -118,3 +118,41 @@ defmodule Wyvern.Param do
     end
   end
 end
+
+defimpl Wyvern.IR, for: Wyvern.Param do
+  alias Wyvern.IR
+  alias Wyvern.Param
+  alias Wyvern.Identifier
+
+  def to_ir(%Param{name: name, type: type, attributes: attributes}, %IR.Context{} = ctx) do
+    name_str = if name, do: " %#{Identifier.legal_identifier(name)}", else: ""
+    {type_str, ctx} = IR.to_ir(type, ctx)
+
+    {attr_str, ctx} =
+      if attributes == [] do
+        {"", ctx}
+      else
+        {attr_str, ctx} = format_attributes(attributes, ctx)
+        {" #{attr_str}", ctx}
+      end
+
+    {"#{type_str}#{attr_str}#{name_str}", ctx}
+  end
+
+  def resolve_names(%Param{id: id, name: name}, %IR.Context{} = ctx) do
+    IR.Context.map_id_to_name(ctx, id, name)
+  end
+
+  defp format_attributes(attributes, ctx) do
+    {attributes_ir, ctx} = Enum.map_reduce(attributes, ctx, &format_attribute/2)
+    attributes_str = Enum.join(attributes_ir, " ")
+    {attributes_str, ctx}
+  end
+
+  defp format_attribute({key, true}, ctx), do: {"#{key}", ctx}
+
+  defp format_attribute({key, value}, ctx) do
+    {value_ir, ctx} = IR.to_ir(value, ctx)
+    {"#{key}(#{value_ir})", ctx}
+  end
+end

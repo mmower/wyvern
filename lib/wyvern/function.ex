@@ -129,3 +129,50 @@ defmodule Wyvern.Function do
     if cconv && cconv not in @cconv, do: raise("unsupported calling convention #{cconv}!")
   end
 end
+
+defimpl Wyvern.IR, for: Wyvern.Function do
+  alias Wyvern.IR
+  alias Wyvern.Identifier
+  alias Wyvern.Function
+
+  def to_ir(
+        %Function{
+          name: name,
+          ret_type: ret_type,
+          params: params,
+          blocks: blocks,
+          linkage: linkage,
+          visibility: visibility,
+          addr: addr,
+          cconv: cconv
+        },
+        %IR.Context{} = ctx
+      ) do
+    {ret_type_str, ctx_1} = IR.to_ir(ret_type, ctx)
+
+    {params_mapped, ctx_2} = Enum.map_reduce(params, ctx_1, &IR.to_ir/2)
+    params_str = Enum.join(params_mapped, ", ")
+
+    {blocks_mapped, ctx_3} = Enum.map_reduce(blocks, ctx_2, &IR.to_ir/2)
+    blocks_str = Enum.join(blocks_mapped, "\n")
+
+    {"define #{linkage_keyword(linkage)}#{visibility_keyword(visibility)}#{cconv_keyword(cconv)}#{ret_type_str} @#{Identifier.legal_identifier(name)}(#{params_str})#{addr_keyword(addr)} {\n#{blocks_str}\n}",
+     ctx_3}
+  end
+
+  defp linkage_keyword(nil), do: ""
+  defp linkage_keyword(linkage), do: "#{linkage} "
+
+  defp visibility_keyword(nil), do: ""
+  defp visibility_keyword(visibility), do: "#{visibility} "
+
+  defp addr_keyword(nil), do: ""
+  defp addr_keyword(addr), do: " #{addr}"
+
+  defp cconv_keyword(nil), do: ""
+  defp cconv_keyword(cconv), do: "#{cconv} "
+
+  def resolve_names(%Function{params: params, blocks: blocks}, %IR.Context{} = ctx) do
+    Enum.reduce(params ++ blocks, ctx, &IR.resolve_names/2)
+  end
+end

@@ -1,4 +1,4 @@
-# Wyvern 1.0.0
+# Wyvern 1.0.7
 
 Author: Matt Mower <self@mattmower.com>
 

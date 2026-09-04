@@ -20,3 +20,16 @@ defmodule Wyvern.Label do
     }
   end
 end
+
+defimpl Wyvern.IR, for: Wyvern.Label do
+  alias Wyvern.IR
+  alias Wyvern.Label
+
+  def to_ir(%Label{}, _ctx) do
+    raise "Unsupported: IR.to_ir not supported on Label!"
+  end
+
+  def resolve_names(%Label{} = label, %IR.Context{} = ctx) do
+    IR.Context.map_id_to_name(ctx, label)
+  end
+end
